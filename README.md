@@ -1,1 +1,4 @@
-# Max-Flow_Min-Cut
+# Max-Flow Min-Cut Theorem in Lean
+
+This project strives to create a file, which will contribute to and is dependent on [mathlib](https://github.com/leanprover-community/mathlib/edit/max_flow_min_cut/README.md), the library of the Lean theorem prover. The [file](https://github.com/amilchew/Max-Flow_Min-Cut/blob/master/src/max_flow_min_cut.lean) implements the Max-Flow Min-Cut theorem, stating that if a maximum flow exists in a flow network, then its value is equal to the capacity of the minimum cut in the same network. Introduction to the field and formal proof of the theorem can be found in [this file](https://github.com/amilchew/Max-Flow_Min-Cut/blob/master/Max-Flow-Min-Cut-Proof.pdf).
+
