@@ -71,11 +71,11 @@ structure flow_network (V : Type*) [inst : fintype V]
 
 noncomputable
 def mk_in {V : Type* } [inst : fintype V]
-  (f : V -> V -> ℝ) (s : finset V) : ℝ := ∑ x in finset.univ \ s, ∑ y in s, f x y
+  (f : V -> V -> ℝ) (S : finset V) : ℝ := ∑ x in finset.univ \ S, ∑ y in S, f x y
 
 noncomputable
 def mk_out {V : Type* } [inst : fintype V]
-  (f : V -> V -> ℝ) (s : finset V) : ℝ := ∑ x in s, ∑ y in finset.univ \ s, f x y
+  (f : V -> V -> ℝ) (S : finset V) : ℝ := ∑ x in S, ∑ y in finset.univ \ S, f x y
 
 structure active_flow_network (V : Type*)  [fintype V] :=
   (network : flow_network V)
@@ -341,6 +341,7 @@ begin
   end,
   -- "meta" errors occur, how is finset handled?
   have hS: {s} ⊆  S := by sorry, -- {exact (set.singleton_subset_iff).2 sInS},
+  have sInCompl: {s} ⊆ V' \ (S \ {s}) := by sorry,
   have tNotInS: t ∉ S :=
   begin
     have same_sink: t = ct.network.sink := by {exact (same_source_and_sink afn ct same_net).2},
@@ -353,49 +354,129 @@ begin
     sorry,
     -- exact set.not_mem_diff_of_mem tInT,
   end,
+  /-
+   **Prove the following 3**
+  -/
+  have seteq: V' \ (S \ {s}) \ {s} = V' \ S := by sorry,
+  have union: V' \ S ∪ S \ {s} = V' \ {s} := by sorry,
+  have disj: disjoint (V' \ S) (S \ {s}) := by sorry,
   have expand: mk_out afn.f {s} + (mk_out afn.f (S \ {s}) - mk_in afn.f (S \ {s})) - mk_in afn.f {s}
   =  mk_out afn.f {s} - mk_in afn.f {s} :=
   begin
     have h3: s ∉ (S \ {s}) := by sorry, -- {set.not_mem_diff_of_mem singleton},
     have eq: mk_out afn.f (S \ {s}) - mk_in afn.f (S \ {s}) = 0 :=
     begin
-      have h: (S \ {s}) ⊆ finset.univ \ {s,t} :=
-      begin
-        intros x xInSet,
-        have memU: x ∈ finset.univ := by {exact finset.mem_univ x},
-        have xInS: x ∈ S:= by sorry, -- {exact ((set.mem_diff x).1 xInSet).1},
-        have xNotInS: x ∉ {t} :=
-        begin
-          by_contradiction h,
-          have eq: x = t := by {exact set.mem_singleton_iff.1 h},
-          rw eq at xInS,
-          contradiction,
-        end,
-        have union: {s} ∪ {t} = {s,t} := by {exact set.singleton_union},
-        have xNotInS: x ∉ {s} := by sorry, -- {exact ((set.mem_diff x).1 xInSet).2},
-        have xOut: x ∉ {s,t} :=
-        begin
-          rw ← union,
-          by_contradiction h,
-          cases h with h0 h1,
-          {exact absurd h0 xNotInS},
-          exact absurd h1 xNotInT,
-        end,
-        exact set.mem_diff.2 memU
-      end,
+      have h: (S \ {s}) ⊆ finset.univ \ {s,t} := by sorry,
+    --   begin
+    --     intros x xInSet,
+    --     have memU: x ∈ finset.univ := by {exact finset.mem_univ x},
+    --     have xInS: x ∈ S:= by sorry, -- {exact ((set.mem_diff x).1 xInSet).1},
+    --     have xNotInS: x ∉ {t} :=
+    --     begin
+    --       by_contradiction h,
+    --       have eq: x = t := by {exact set.mem_singleton_iff.1 h},
+    --       rw eq at xInS,
+    --       contradiction,
+    --     end,
+    --     have union: {s} ∪ {t} = {s,t} := by {exact set.singleton_union},
+    --     have xNotInS: x ∉ {s} := by sorry, -- {exact ((set.mem_diff x).1 xInSet).2},
+    --     have xOut: x ∉ {s,t} :=
+    --     begin
+    --       rw ← union,
+    --       by_contradiction h,
+    --       cases h with h0 h1,
+    --       {exact absurd h0 xNotInS},
+    --       exact absurd h1 xNotInT,
+    --     end,
+    --     exact set.mem_diff.2 memU
+    --   end,
       exact set_flow_conservation_eq afn (S \ {s}) h,
     end,
     exact add_zero_middle (mk_out afn.f {s}) (mk_in afn.f {s}) (mk_out afn.f (S \ {s}) - mk_in afn.f (S \ {s})) eq,
   end,
-  /- The next two equalities use sum over two elements, so I am not sure how to resolve them. -/
-  have sum1: mk_out afn.f {s} + mk_out afn.f (S \ {s})  = mk_out afn.f S :=
-  by sorry, -- {unfold mk_out, rw finset.sum_sdiff hS},
-  have sum2: mk_in afn.f (S \ {s}) + mk_in afn.f {s} = mk_in afn.f S :=
-  by sorry, -- {unfold mk_in, rw finset.sum_sdiff hS},
+  have sum1: mk_out afn.f {s} + mk_out afn.f (S \ {s}) = 
+  mk_out afn.f S + ∑ u in (S \ {s}), afn.f s u + ∑ u in (S \ {s}), afn.f u s :=
+  begin
+    unfold mk_out,
+    have eq1: ∑ (x : V) in S, ∑ (y : V) in V' \ S, afn.f x y = 
+    ∑ (x : V) in (S \ {s}) , ∑ (y : V) in V' \ S, afn.f x y + ∑ (x : V) in {s}, ∑ (y : V) in V' \ S, afn.f x y := 
+    by {rw finset.sum_sdiff hS},
+    have eq2: ∑ (x : V) in {s}, ∑ (y : V) in V' \ S, afn.f x y = ∑ (y : V) in V' \ S, afn.f s y := by simp,
+    have eq3: ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ (S \ {s}), f x y = 
+    ∑ (x : V) in (S \ {s}), f x s + ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ S, f x y :=
+    begin
+      have obvs: ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ (S \ {s}), f x y = 
+      ∑ (y : V) in V' \ (S \ {s}), ∑ (x : V) in (S \ {s}), f x y := by {exact finset.sum_comm},
+      have sdiff: ∑ (y : V) in V' \ (S \ {s}), ∑ (x : V) in (S \ {s}), f x y = 
+      ∑ (y : V) in V' \ S, ∑ (x : V) in (S \ {s}), f x y + ∑ (y : V) in {s}, ∑ (x : V) in (S \ {s}), f x y :=
+      by {rw ← finset.sum_sdiff sInCompl, rw seteq},
+      have obs: ∑ (y : V) in {s}, ∑ (x : V) in (S \ {s}), f x y = ∑ (x : V) in (S \ {s}), f x s := by {simp},
+      have swap: ∑ (y : V) in V' \ S, ∑ (x : V) in S \ {s}, f x y = 
+      ∑ (x : V) in S \ {s}, ∑ (y : V) in V' \ S, f x y := by {exact finset.sum_comm},
+      rw obs at sdiff,
+      rw [obvs, sdiff, add_comm, swap],
+    end,
+    have eq4: ∑ (x : V) in {s}, ∑ (y : V) in V' \ {s}, afn.f x y = 
+    ∑ (y : V) in V' \ S, afn.f s y + ∑ (u : V) in S \ {s}, afn.f s u :=
+    begin
+      have obvs: ∑ (x : V) in {s}, ∑ (y : V) in V' \ {s}, afn.f x y = 
+      ∑ (y : V) in V' \ {s}, afn.f s y := by {simp},
+      rw obvs,
+      rw ← union,
+      exact finset.sum_union disj,
+    end,
+    linarith
+  end,
+  have sum2: mk_in afn.f (S \ {s}) + mk_in afn.f {s} = 
+  mk_in afn.f S + ∑ u in (S \ {s}), afn.f s u + ∑ u in (S \ {s}), afn.f u s :=
+  begin
+    unfold mk_in,
+    have eq1: ∑ (x : V) in V' \ S, ∑ (y : V) in S, afn.f x y =
+    ∑ (x : V) in V' \ S, ∑ (y : V) in (S \ {s}), afn.f x y + ∑ (x : V) in V' \ S, ∑ (y : V) in {s}, afn.f x y :=
+    begin
+      have obvs: ∑ (x : V) in V' \ S, ∑ (y : V) in S, afn.f x y = ∑ (y : V) in S, ∑ (x : V) in V' \ S, afn.f x y := 
+      by {exact finset.sum_comm},
+      have sdiff: ∑ (y : V) in S, ∑ (x : V) in V' \ S, afn.f x y = 
+      ∑ (y : V) in (S \ {s}), ∑ (x : V) in V' \ S, afn.f x y + ∑ (y : V) in {s}, ∑ (x : V) in V' \ S, afn.f x y := 
+      by {rw finset.sum_sdiff hS},
+      have swap: ∑ (y : V) in (S \ {s}), ∑ (x : V) in V' \ S, afn.f x y + ∑ (y : V) in {s}, ∑ (x : V) in V' \ S, afn.f x y = 
+      ∑ (x : V) in V' \ S, ∑ (y : V) in (S \ {s}), afn.f x y + ∑ (x : V) in V' \ S, ∑ (y : V) in {s}, afn.f x y := 
+      begin 
+        have eq11: ∑ (y : V) in (S \ {s}), ∑ (x : V) in V' \ S, afn.f x y = 
+        ∑ (x : V) in V' \ S, ∑ (y : V) in (S \ {s}), afn.f x y := by {exact finset.sum_comm},
+        have eq12: ∑ (y : V) in {s}, ∑ (x : V) in V' \ S, afn.f x y =
+        ∑ (x : V) in V' \ S, ∑ (y : V) in {s}, afn.f x y := by {exact finset.sum_comm},
+        linarith,
+      end,
+      linarith,
+    end,
+    have eq2: ∑ (x : V) in V' \ S, ∑ (y : V) in {s}, afn.f x y = ∑ (u : V) in V' \ S, afn.f u s := by {simp},
+    have eq3: ∑ (x : V) in V' \ (S \ {s}), ∑ (y : V) in S \ {s}, afn.f x y =
+    ∑ (x : V) in V' \ S, ∑ (y : V) in S \ {s}, afn.f x y + ∑ (u : V) in S \ {s}, afn.f s u :=
+    begin
+      have eq31: ∑ (x : V) in V' \ (S \ {s}), ∑ (y : V) in S \ {s}, afn.f x y = 
+      ∑ (x : V) in V' \ S, ∑ (y : V) in S \ {s}, afn.f x y + ∑ (x : V) in {s}, ∑ (y : V) in S \ {s}, afn.f x y :=
+      by {rw ← finset.sum_sdiff sInCompl, rw seteq},
+      have eq32: ∑ (x : V) in {s}, ∑ (y : V) in S \ {s}, afn.f x y = ∑ (u : V) in S \ {s}, afn.f s u := by {simp},
+      linarith,
+    end,
+    have eq4: ∑ (x : V) in V' \ {s}, ∑ (y : V) in {s}, afn.f x y =
+    ∑ (u : V) in V' \ S, f u s + ∑ (u : V) in S \ {s}, afn.f u s :=
+    begin
+      have obvs: ∑ (u : V) in V' \ S, afn.f u s = 
+      ∑ (x : V) in V' \ S, ∑ (y : V) in {s}, afn.f x y := by {simp},
+      have obs: ∑ (u : V) in S \ {s}, afn.f u s = 
+      ∑ (x : V) in S \ {s}, ∑ (y : V) in {s}, afn.f x y := by {simp},
+      rw ← union,
+      rw [obvs,obs],
+      exact finset.sum_union disj,
+    end,
+    linarith,
+  end,
   rw ← expand,
   rw add_sub,
   rw group_minus (mk_out afn.f {s}) (mk_out afn.f (S \ {s})) (mk_in afn.f (S \ {s})) (mk_in afn.f {s}),
-  rw sum1, rw sum2,
+  linarith
 end
 
 /-!
