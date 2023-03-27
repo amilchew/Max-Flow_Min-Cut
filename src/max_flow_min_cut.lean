@@ -310,10 +310,6 @@ begin
   simp
 end
 
-/-
-  This lemma has issues, I am confused how finsets are handled.
-  The complains mention "meta variables".
--/
 lemma flow_value_global_ver {V : Type*}  [inst' : fintype V]
   (afn : active_flow_network V) (ct : cut V)
   (same_net : afn.network = ct.network) :
@@ -335,16 +331,22 @@ begin
     exact ct.sins,
   end,
   have hS: {s} ⊆  S := (finset.singleton_subset_iff).2 sInS,
-  have sInCompl: {s} ⊆ V' \ (S \ {s}) :=
-  begin
-    have sIn: {s} ⊆ V' := finset.subset_univ {s},
-    have disjS: disjoint {s} (S \ {s}) :=
+  have disjS: disjoint {s} (S \ {s}) :=
     begin 
       have sOut: s ∉ (S \ {s}) := finset.not_mem_sdiff_of_mem_right singleton,
       exact finset.disjoint_singleton_left.2 sOut,
     end,
+  have sInCompl: {s} ⊆ V' \ (S \ {s}) :=
+  begin
+    have sIn: {s} ⊆ V' := finset.subset_univ {s},
     have conj: {s} ⊆ V' ∧ disjoint {s} (S \ {s}) := and.intro sIn disjS,
     exact finset.subset_sdiff.2 conj,
+  end,
+  have tNotS: t ≠ s :=
+  begin 
+    by_contradiction h,
+    have contr: s = t := by rw ← h,
+    exact absurd contr afn.sourceNotSink,
   end,
   have tNotInS: t ∉ S :=
   begin
@@ -357,17 +359,130 @@ begin
     rw Scomp at *,
     exact finset.not_mem_sdiff_of_mem_right tInT,
   end,
-  /-
-   **Prove the following 3**
-  -/
-  have seteq: V' \ (S \ {s}) \ {s} = V' \ S := by sorry,
-  have union: V' \ S ∪ S \ {s} = V' \ {s} := by sorry,
-  have disj: disjoint (V' \ S) (S \ {s}) := by sorry,
-  have tNotS: t ≠ s :=
-  begin 
-    by_contradiction h,
-    have contr: s = t := by rw ← h,
-    exact absurd contr afn.sourceNotSink,
+  have seteq: V' \ (S \ {s}) \ {s} = V' \ S :=
+  begin
+    ext x,
+    have eq1: V' \ (S \ {s}) \ {s} = V' \ (S \ {s}) ∩ (V' \ {s}) := 
+    finset.sdiff_sdiff_left' V' (S \ {s}) {s},
+    rw eq1,
+    have xIn: x ∈ V' := finset.mem_univ x,
+    split,
+    {
+      intro hyp,
+      have xIn1: x ∈ V' \ (S \ {s}) := (finset.mem_inter.1 hyp).1,
+      have xIn2: x ∈ V' \ {s} := (finset.mem_inter.1 hyp).2,
+      have xOut: x ∉ S := 
+      begin
+        have xOut1: x ∉ (S \ {s}) := (finset.mem_sdiff.1 xIn1).2,
+        have xOut2: x ∉ {s} := (finset.mem_sdiff.1 xIn2).2,
+        have xOutAnd: x ∉ (S \ {s}) ∧ x ∉ {s} := and.intro xOut1 xOut2,
+        have eq2: S = (S \ {s}) ∪ {s} :=
+        begin
+          have inter: S ∩ {s} = {s} := finset.inter_singleton_of_mem sInS,
+          have eq3: (S \ {s}) ∪ S ∩ {s} = S := by rw finset.sdiff_union_inter S {s},
+          calc 
+            S 
+                = (S \ {s}) ∪ S ∩ {s} : eq_comm.1 eq3
+            ... = (S \ {s}) ∪ {s} : by rw inter,
+        end,
+        rw eq2,
+        exact finset.not_mem_union.2 xOutAnd, 
+      end,
+      have concl: x ∈ V' ∧ x ∉ S := and.intro xIn xOut,
+      exact finset.mem_sdiff.2 concl,
+    },
+    intro hyp,
+    have xOutS: x ∉ S := (finset.mem_sdiff.1 hyp).2,
+    have xOut: x ∉ S \ {s} :=
+    begin
+      by_contradiction h,
+      have contr: x ∈ S := (finset.mem_sdiff.1 h).1,
+      exact absurd contr xOutS,
+    end,
+    have h1: x ∈ V' ∧ x ∉ S \ {s} := and.intro xIn xOut,
+    have xIn1: x ∈ V' \ (S \ {s}) := finset.mem_sdiff.2 h1,
+    have xNots: x ∉ {s} :=
+    begin
+      by_contradiction h,
+      have contr: x ∈ S := finset.mem_of_subset hS h,
+      exact absurd contr xOutS,
+    end,
+    have concl: x ∈ V' ∧ x ∉ {s} := and.intro xIn xNots,
+    have xIn2: x ∈ V' \ {s} := finset.mem_sdiff.2 concl,
+    have member: x ∈ V' \ (S \ {s}) ∧ x ∈ V' \ {s} := and.intro xIn1 xIn2,
+    exact finset.mem_inter.2 member,
+  end,
+  have union: V' \ S ∪ S \ {s} = V' \ {s} :=
+  begin
+    ext x,
+    have xIn: x ∈ V' := finset.mem_univ x,
+    split,
+    {
+      intro hyp,
+      have h1: x ∈ V' \ S ∨ x ∈ S \ {s} := finset.mem_union.1 hyp,
+      have h2: x ∈ V' \ S → x ∈ V' \ {s} :=
+      begin
+        intro hip,
+        have xOutS: x ∉ S := (finset.mem_sdiff.1 hip).2,
+        have xNots: x ∉ {s} :=
+        begin
+          by_contradiction h,
+          have contr: x ∈ S := finset.mem_of_subset hS h,
+          exact absurd contr xOutS,
+        end,
+        have concl: x ∈ V' ∧ x ∉ {s} := and.intro xIn xNots, 
+        exact finset.mem_sdiff.2 concl,
+      end,
+      have h3: x ∈ S \ {s} → x ∈ V' \ {s} :=
+      begin
+        intro hypo,
+        have xNots: x ∉ {s} := (finset.mem_sdiff.1 hypo).2,
+        have concl: x ∈ V' ∧ x ∉ {s} := and.intro xIn xNots,
+        exact finset.mem_sdiff.2 concl,
+      end,
+      exact or.elim h1 h2 h3,
+    },
+    intro hyp,
+    have xNots: x ∉ {s} := (finset.mem_sdiff.1 hyp).2,
+    by_cases h' : x ∈ S,
+    { 
+      have and: x ∈ S ∧ x ∉ {s} := and.intro h' xNots, 
+      have xInSs: x ∈ S \ {s} := finset.mem_sdiff.2 and,
+      have conj: x ∈ V' \ S ∨ x ∈ S \ {s} := or.intro_right (x ∈ V' \ S) xInSs,
+      exact finset.mem_union.2 conj,
+    },
+    {
+      have and: x ∈ V' ∧ x ∉ S := and.intro xIn h',
+      have xInVS: x ∈ V' \ S := finset.mem_sdiff.2 and,
+      have conj: x ∈ V' \ S ∨ x ∈ S \ {s} := or.intro_left (x ∈ S \ {s}) xInVS,
+      exact finset.mem_union.2 conj,
+    },
+  end,
+  have disj: disjoint (V' \ S) (S \ {s}) :=
+  begin
+    have h1: (V' \ S) ∩ (S \ {s}) = ∅ := 
+    begin
+      have noMembers: ∀ (v : V), v ∉ (V' \ S) ∩ (S \ {s}) := 
+      begin
+      intro v,
+      by_contradiction h,
+      have vInVS: v ∈ (V' \ S) := (finset.mem_inter.1 h).1,
+      have vNotS: v ∉ S := (finset.mem_sdiff.1 vInVS).2,
+      have vInSs: v ∈ (S \ {s}) := (finset.mem_inter.1 h).2,
+      have vInS: v ∈ S := (finset.mem_sdiff.1 vInSs).1,
+      exact absurd vInS vNotS,
+      end,
+      exact finset.eq_empty_of_forall_not_mem noMembers,
+    end,
+    have h2: ¬ ((V' \ S) ∩ (S \ {s})).nonempty :=
+    begin
+      by_contradiction h,
+      have contr: (V' \ S) ∩ (S \ {s}) ≠ ∅ := finset.nonempty.ne_empty h,
+      exact absurd h1 contr,
+    end,
+    by_contradiction notDisjoint,
+    have contr: ((V' \ S) ∩ (S \ {s})).nonempty := finset.not_disjoint_iff_nonempty_inter.1 notDisjoint,
+    exact absurd contr h2,
   end,
   have disjTS: disjoint {t} {s} := finset.disjoint_singleton.2 (tNotS),
   have expand: mk_out afn.f {s} + (mk_out afn.f (S \ {s}) - mk_in afn.f (S \ {s})) - mk_in afn.f {s}
@@ -389,6 +504,9 @@ begin
           contradiction,
         end,
         have union: {s} ∪ {t} = {s,t} := set.singleton_union,
+        -- begin
+        --   have h1: {t}.disj_union {s} = finset.cons t {s} _ := finset.singleton_disj_union t {s} disjTS,
+        -- end,
         have xNotInS: x ∉ {s} := ((finset.mem_sdiff).1 xInSet).2,
         have xOut: x ∉ {s,t} :=
         begin
@@ -554,8 +672,12 @@ begin
     have no_overflow: mk_out afn.f S ≤ mk_out afn.network.to_capacity.c S :=
     begin
       unfold mk_out,
-      have flowLEcut: ∀ (x y : V), (afn.f x y ≤ afn.network.to_capacity.c x y) :=
-      by {exact afn.no_overflow},
+      have flowLEcut: ∀ (x y : V), (x ∈ V' \ S ∧ y ∈ S) → 
+      (afn.f x y ≤ afn.network.to_capacity.c x y) :=
+      begin
+        intros x y hyp,
+        exact afn.no_overflow x y,
+      end,
       sorry,
       -- exact finset.sum_le_sum flowLEcut,
     end,
@@ -571,14 +693,13 @@ begin
     rw obs,
     simp,
     unfold mk_in,
-    have nonneg_flow: ∀ v ∈ V', ∀ u ∈ S, afn.f u v ≥ 0 :=
+    have nonneg_flow: ∀ (u v : V), (u ∈ V' \ S ∧ v ∈ S) → afn.f u v ≥ 0 :=
     begin
-      intros v vInV' u uInS,
-      have h1: v ∈ V' := vInV',
-      have h2: u ∈ S := uInS,
+      intros u v hyp,
       exact afn.non_neg_flow u v,
     end,
-    exact finset.sum_nonneg nonneg_flow,
+    sorry,
+    -- exact finset.sum_nonneg nonneg_flow,
   end,
   apply le_trans lemma3 lemma2,
 end
