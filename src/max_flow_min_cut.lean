@@ -47,7 +47,7 @@ open finset
 open_locale big_operators
 open_locale classical
 
-notation ` V' ` := univ 
+notation ` V' ` := univ
 
 /-!
   We now define our flow network. Our goal will be to prove weak_duality.
@@ -320,6 +320,7 @@ begin
   set T := ct.T,
   set s := afn.network.source,
   set t := afn.network.sink,
+  set f := afn.f,
   have same: s = s := by {simp},
   have hs : s = afn.network.source := rfl,
   have hT : T = ct.T := rfl,
@@ -503,10 +504,7 @@ begin
           rw eq at xInS,
           contradiction,
         end,
-        have union: {s} ∪ {t} = {s,t} := set.singleton_union,
-        -- begin
-        --   have h1: {t}.disj_union {s} = finset.cons t {s} _ := finset.singleton_disj_union t {s} disjTS,
-        -- end,
+        have union: ({s}: finset V) ∪ {t} = {s,t} := by refl,
         have xNotInS: x ∉ {s} := ((finset.mem_sdiff).1 xInSet).2,
         have xOut: x ∉ {s,t} :=
         begin
@@ -539,8 +537,8 @@ begin
     ∑ (x : V) in (S \ {s}) , ∑ (y : V) in V' \ S, afn.f x y + ∑ (x : V) in {s}, ∑ (y : V) in V' \ S, afn.f x y := 
     by {rw finset.sum_sdiff hS},
     have eq2: ∑ (x : V) in {s}, ∑ (y : V) in V' \ S, afn.f x y = ∑ (y : V) in V' \ S, afn.f s y := by simp,
-    have eq3: ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ (S \ {s}), f x y = 
-    ∑ (x : V) in (S \ {s}), f x s + ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ S, f x y :=
+    have eq3: ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ (S \ {s}), afn.f x y = 
+    ∑ (x : V) in (S \ {s}), afn.f x s + ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ S, afn.f x y :=
     begin
       have obvs: ∑ (x : V) in (S \ {s}), ∑ (y : V) in V' \ (S \ {s}), f x y = 
       ∑ (y : V) in V' \ (S \ {s}), ∑ (x : V) in (S \ {s}), f x y := finset.sum_comm,
