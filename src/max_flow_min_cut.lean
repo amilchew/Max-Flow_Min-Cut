@@ -495,7 +495,7 @@ begin
       have h: (S \ {s}) ⊆ finset.univ \ {s,t} :=
       begin
         intros x xInSet,
-        have memU: x ∈ finset.univ := finset.mem_univ x,
+        have xIn: x ∈ V' := finset.mem_univ x,
         have xInS: x ∈ S:= ((finset.mem_sdiff).1 xInSet).1,
         have xNotInT: x ∉ {t} :=
         begin
@@ -523,7 +523,8 @@ begin
           end,
           exact or.elim inUnion contr1 contr2,
         end,
-        exact finset.mem_sdiff.2 memU
+        have and: x ∈ V' ∧ x ∉ {s,t} := and.intro xIn xOut,
+        exact finset.mem_sdiff.2 and,
       end,
       exact set_flow_conservation_eq afn (S \ {s}) h,
     end,
