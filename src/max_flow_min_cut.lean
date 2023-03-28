@@ -205,17 +205,7 @@ begin
   {exact hx,}
 end
 
-lemma sub_comm_zero (a b : ℝ) : a - b = 0 → b - a = 0 :=
-begin
-  intro eq,
-  rw ← add_left_inj (a),
-  rw sub_add_cancel, rw zero_add,
-  rw ← add_left_inj (-b),
-  rw add_neg_self,
-  rw ← sub_eq_add_neg,
-  rw eq_comm,
-  exact eq
-end
+lemma sub_comm_zero (a b : ℝ) : a - b = 0 → b - a = 0 := by {intro eq, linarith}
 
 lemma set_flow_conservation {V : Type*}  [inst' : fintype V]
   (afn : active_flow_network V) (S : finset V) :
@@ -278,13 +268,7 @@ begin
   simp,
 end
 
-lemma move_right (a b : ℝ) : b = a → a - b = 0 :=
-begin
-  intro eq,
-  rw eq_comm,
-  rw ← add_left_inj (b),
-  simp, exact eq
-end
+lemma move_right (a b : ℝ) : b = a → a - b = 0 := by {intro eq, linarith}
 
 lemma set_flow_conservation_eq {V : Type*}  [inst' : fintype V]
   (afn : active_flow_network V) (S : finset V) :
@@ -292,9 +276,7 @@ S ⊆ finset.univ \ {afn.network.source, afn.network.sink} -> mk_out afn.f S - m
 begin
   intro hip,
   have h: mk_in afn.f S = mk_out afn.f S := set_flow_conservation afn S hip,
-  rw eq_comm at h,
-  rw ← add_left_inj (-mk_in afn.f S) at h,
-  rw add_neg_self(mk_in afn.f S) at h, exact h
+  linarith
 end
 
 lemma add_zero_middle (a b c: ℝ): c = 0 → a + c - b = a - b := by {intro eq, linarith}
@@ -311,7 +293,7 @@ begin
   simp
 end
 
-lemma flow_value_global_ver {V : Type*}  [inst' : fintype V]
+lemma flow_value_global_ver {V : Type*}  [inst' : fintype V] -- **Think of a new name!**
   (afn : active_flow_network V) (ct : cut V)
   (same_net : afn.network = ct.network) :
   mk_out afn.f {afn.network.source} - mk_in afn.f {afn.network.source} =
