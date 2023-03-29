@@ -97,7 +97,7 @@ def F_value {V : Type*}  [fintype V] :
 structure cut (V : Type*)  [fintype V] :=
   (network : flow_network V)
   (S : finset V)
-  (T : finset V )
+  (T : finset V)
   (sins : network.source ∈ S)
   (tint : network.sink ∈ T)
   (Tcomp : T = univ \ S)
