@@ -44,7 +44,6 @@ then its value is equal to the capacity of a minimum cut in the same network.
 
 open finset
 
-
 open_locale big_operators
 open_locale classical
 
