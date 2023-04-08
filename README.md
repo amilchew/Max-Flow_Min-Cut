@@ -10,7 +10,7 @@ Introduction to the field and formal proof of the theorem can be found in [this 
 
 - The code is based on the [first try to prove the theorem](https://github.com/Zetagon/maxflow-mincut/blob/master/src/maxflowmincut.lean) by Leo Okawa Ericson and Viggo Laakshoharju.
 - The proof is based on the [Combinatorial Optimisation] (https://onlinelibrary.wiley.com/doi/book/10.1002/9781118033142) book by William J. Cook, William H. Cunningham, William R. Pulleyblank, Alexander Schrijver. 
-- A proof of the same theorem, implemented in mathlib4 can be followed [here](https://gitlab.com/Shreyas941/maxflowmincutlean4/-/blob/master/MaxFlowMinCut.lean).
+- A proof of the same theorem, implemented in mathlib4, can be followed [here](https://gitlab.com/Shreyas941/maxflowmincutlean4/-/blob/master/MaxFlowMinCut.lean).
 
 ## Maintainers:
 
