@@ -802,8 +802,8 @@ begin
   have pos: 0 < d := by sorry, -- by definition of is_edge in the residual network
   set better_flow: active_flow_network V :=
   ⟨rsn.afn.network,
-  (λ u v : V, if rsn.afn.network.is_edge u v then if exists_path.in u v then rsn.afn.f u v + d
-              else if exists_path.in v u then rsn.afn.f u v - d else rsn.afn.f u v else 0),
+  (λ u v : V, if rsn.afn.network.is_edge u v then (if exists_path.in u v then rsn.afn.f u v + d
+              else (if exists_path.in v u then rsn.afn.f u v - d else rsn.afn.f u v)) else 0),
   begin -- source ≠ sink
     exact rsn.afn.sourceNotSink,
   end,
@@ -857,13 +857,19 @@ begin
       simp only [edge, if_true],
       by_cases h: exists_path.in u v,
       {
-        have h1: rsn.afn.f u v + d ≤ rsn.afn.network.to_capacity.c u v := by sorry,
-        -- begin
-        --   have h2: rsn.afn.f u v + rsn.f' u v ≤ rsn.afn.network.to_capacity.c u v := by def of rsn
-        --   have h3: d ≤ rsn.f' u v := by minimality of d
-        --   have h4: rsn.afn.f u v + d ≤ rsn.afn.f u v + rsn.f' u v := by {linarith},
-        --   exact le_trans h4 h2
-        -- end,
+        have h1: rsn.afn.f u v + d ≤ rsn.afn.network.to_capacity.c u v :=
+        begin
+          have h2: rsn.afn.f u v + rsn.f' u v ≤ rsn.afn.network.to_capacity.c u v :=
+          begin
+              have eq: rsn.f' u v = rsn.afn.network.c u v - rsn.afn.f u v :=
+              by {rw rsn.f_def, unfold mk_rsf, simp only [edge, if_true, h, if_true]},
+              rw eq,
+              linarith,
+          end,
+          have h3: d ≤ rsn.f' u v := by sorry, -- minimality of d
+          have h4: rsn.afn.f u v + d ≤ rsn.afn.f u v + rsn.f' u v := by {linarith},
+          exact le_trans h4 h2
+        end,
         simp only [h, if_true],
         exact h1,
       },
