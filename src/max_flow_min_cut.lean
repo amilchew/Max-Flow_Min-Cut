@@ -83,8 +83,8 @@ structure active_flow_network (V : Type*)  [fintype V] :=
   (sourceNotSink: network.source ≠ network.sink)
   (non_neg_flow : ∀ u v : V, f u v ≥ 0)
   (no_overflow : ∀ u v : V, f u v ≤ network.c u v)
-  (noEdgesInSource : ∀ u : V, ¬ (network.is_edge u network.source))
-  (noEdgesOutSink : ∀ u: V, ¬ (network.is_edge network.sink u))
+  (no_edges_in_source : ∀ u : V, ¬ (network.is_edge u network.source))
+  (no_edges_out_sink : ∀ u: V, ¬ (network.is_edge network.sink u))
   (conservation : ∀ v : V,
                   v ∈ (V' : finset V) \ {network.source, network.sink} →
                   mk_out f {v} = mk_in f {v})
@@ -725,7 +725,7 @@ structure residual_network  (V : Type*)  [inst' : fintype V] :=
   (f' : V -> V -> ℝ)
   (f_def : f' = mk_rsf afn)
   (is_edge : V -> V -> Prop)
-  (is_edge_def : is_edge = λ u v, f' u v > 0 )
+  (is_edge_def : is_edge = λ u v, f' u v > 0)
 
 noncomputable
 def mk_rsn {V : Type*} [fintype V] -- stays for residual network
@@ -886,11 +886,11 @@ begin
       linarith,
     },
   end,
-  begin --noEdgesInSource
-    exact rsn.afn.noEdgesInSource,
+  begin --no_edges_in_source
+    exact rsn.afn.no_edges_in_source,
   end,
-  begin --noEdgesOutSink
-    exact rsn.afn.noEdgesOutSink,
+  begin --no_edges_out_sink
+    exact rsn.afn.no_edges_out_sink,
   end,
   begin -- conservation
     intros v vNotSinkSource,
@@ -979,19 +979,23 @@ begin
       have eqIn: mk_in newf {v} = mk_in rsn.afn.f {v} :=
       begin
         unfold mk_in,
-      --   have eq: ∀ u : V, (u ∈ V' \ {v}) → 
-      --   (newf u v = rsn.afn.f u v) := by sorry, -- why does it complain?
-      -- -- by {intros u hyp, exact h3 u},
-      -- -- needs one more command
+        have eq1:  ∑ (x : V) in V' \ {v}, ∑ (y : V) in {v}, newf x y = 
+        ∑ (x : V) in V' \ {v}, newf x v := by simp,
+        have eq2: ∑ (x : V) in V' \ {v}, ∑ (y : V) in {v}, rsn.afn.f x y = 
+        ∑ (x : V) in V' \ {v}, rsn.afn.f x v := by simp,
+        rw [eq1, eq2],
+        exact finset.sum_congr rfl (λ u h, h3 u),
       end,
-      have eqOut: mk_out newf {v} = mk_out rsn.afn.f {v} := by sorry,
-      -- begin
-      --   unfold mk_out,
-      --   have eq: ∀ w : V, (w ∈ V' \ {v}) → 
-      --   (newf v w = rsn.afn.f v w) := by sorry,
-      -- -- by {intros u hyp, exact h3 u},
-      -- -- needs one more command
-      -- end,
+      have eqOut: mk_out newf {v} = mk_out rsn.afn.f {v} :=
+      begin
+        unfold mk_out,
+        have eq1: ∑ (x : V) in {v}, ∑ (y : V) in V' \ {v}, newf x y =
+        ∑ (y : V) in V' \ {v}, newf v y := by simp,
+        have eq2: ∑ (x : V) in {v}, ∑ (y : V) in V' \ {v}, rsn.afn.f x y = 
+        ∑ (y : V) in V' \ {v}, rsn.afn.f v y := by simp,
+        rw [eq1, eq2],
+        exact finset.sum_congr rfl (λ u h, h4 u),
+      end,
       rw [eqIn,eqOut],
       exact rsn.afn.conservation v vNotSinkSource,
     },
@@ -1000,17 +1004,60 @@ begin
   have flow_value: F_value better_flow = F_value rsn.afn + d :=
   begin
     unfold F_value,
-    have h1: mk_out better_flow.f {better_flow.network.source} =
-    mk_out rsn.afn.f {rsn.afn.network.source} + d :=
+    set source := better_flow.network.source,
+    have h1: mk_out better_flow.f {source} =
+    mk_out rsn.afn.f {source} + d :=
     by sorry,
     -- take the edge with the added flow
     -- Issue: How do we prove that there is exactly one edge? How do we use it to prove h1?
-    have h2: mk_in better_flow.f {better_flow.network.source} =
-    mk_in rsn.afn.f {rsn.afn.network.source} := 
+    have h2: mk_in better_flow.f {source} =
+    mk_in rsn.afn.f {source} := 
     begin
-      -- Next two should be trivial, the sets are empty! 
-      have h3: mk_in better_flow.f {better_flow.network.source} = 0 := by sorry,
-      have h4: mk_in rsn.afn.f {rsn.afn.network.source} = 0 := by sorry,
+      -- Next two should be trivial, the sets are empty!
+      have h3: mk_in better_flow.f {source} = 0 :=
+      begin
+        unfold mk_in,
+        have eq: ∑ (x : V) in V' \ {source}, ∑ (y : V) in {source}, better_flow.f x y =
+        ∑ (x : V) in V' \ {source}, better_flow.f x source := by simp,
+        have zeroFlow: ∀ x : V, better_flow.f x source = 0 :=
+        begin
+          intro x,
+          have noEdge: ¬better_flow.network.is_edge x source :=
+          better_flow.no_edges_in_source x,
+          have zeroCap: better_flow.network.c x source = 0 :=
+          better_flow.network.vanishes x source noEdge,
+          have noOverflow: better_flow.f x source ≤ 0 :=
+          by {rw ← zeroCap, exact better_flow.no_overflow x source},
+          have nonnegFlow: better_flow.f x source ≥ 0 := 
+          better_flow.non_neg_flow x source,
+          linarith,
+        end,
+        rw eq,
+        exact finset.sum_eq_zero (λ x h, zeroFlow x),
+      end,
+      have h4: mk_in rsn.afn.f {source} = 0 :=
+      begin
+        unfold mk_in,
+        set s := rsn.afn.network.source,
+        have sameSource: s = source := by refl,
+        have eq: ∑ (x : V) in V' \ {s}, ∑ (y : V) in {s}, rsn.afn.f x y =
+        ∑ (x : V) in V' \ {s}, rsn.afn.f x s := by simp,
+        have zeroFlow: ∀ x : V, rsn.afn.f x s = 0 :=
+        begin
+          intro x,
+          have noEdge: ¬rsn.afn.network.is_edge x s :=
+          rsn.afn.no_edges_in_source x,
+          have zeroCap: rsn.afn.network.c x s = 0 :=
+          rsn.afn.network.vanishes x s noEdge,
+          have noOverflow: rsn.afn.f x s ≤ 0 :=
+          by {rw ← zeroCap, exact rsn.afn.no_overflow x s},
+          have nonnegFlow: rsn.afn.f x s ≥ 0 := 
+          rsn.afn.non_neg_flow x s,
+          linarith,
+        end,
+        rw eq,
+        exact finset.sum_eq_zero (λ x h, zeroFlow x),       
+      end,
       rw ← h4 at h3,
       exact h3,
     end,
