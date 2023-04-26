@@ -802,66 +802,88 @@ begin
   have pos: 0 < d := by sorry, -- by definition of is_edge in the residual network
   set better_flow: active_flow_network V :=
   ⟨rsn.afn.network,
-  (λ u v : V, if exists_path.in u v then rsn.afn.f u v + d
-              else if exists_path.in v u then rsn.afn.f u v - d else rsn.afn.f u v),
+  (λ u v : V, if rsn.afn.network.is_edge u v then if exists_path.in u v then rsn.afn.f u v + d
+              else if exists_path.in v u then rsn.afn.f u v - d else rsn.afn.f u v else 0),
   begin -- source ≠ sink
     exact rsn.afn.sourceNotSink,
   end,
   begin -- non_neg_flow
     intros u v,
-    by_cases h: exists_path.in u v,
+    by_cases edge: rsn.afn.network.is_edge u v,
     {
-      have nonneg: rsn.afn.f u v ≥ 0 := rsn.afn.non_neg_flow u v,
-      simp only [h, if_true],
-      linarith,
+      simp only [edge, if_true],
+      by_cases h: exists_path.in u v,
+      {
+        have nonneg: rsn.afn.f u v ≥ 0 := rsn.afn.non_neg_flow u v,
+        simp only [h, if_true],
+        linarith,
+      },
+      {
+        by_cases h': exists_path.in v u,
+          {
+            simp only [h, if_false, h', if_true],
+            have ine: d ≤ rsn.afn.f u v :=
+            begin
+              have minimality: d ≤ rsn.f' v u := by sorry,
+              have eq: rsn.f' v u = rsn.afn.f u v :=
+              begin
+                rw rsn.f_def,
+                unfold mk_rsf,
+                have notAnd := rsn.afn.network.hnonsymmetric u v,
+                simp only [not_and] at notAnd,
+                have notEdge: ¬ rsn.afn.network.is_edge v u := notAnd edge,
+                simp only [notEdge, if_false, edge, if_true],
+              end,
+              rw ← eq,
+              exact minimality,
+            end,
+            linarith,
+          },
+          {
+            simp only [h, if_false, h', if_false],
+            exact rsn.afn.non_neg_flow u v,         
+          },
+      },
     },
     {
-      by_cases h': exists_path.in v u,
-        {
-          simp only [h, if_false, h', if_true],
-          have eq: rsn.f' v u = rsn.afn.f u v :=
-          begin
-            rw rsn.f_def,
-            unfold mk_rsf,
-            have noEdge: ¬ rsn.afn.network.to_capacity.to_digraph.is_edge v u := by sorry,
-            have edge: rsn.afn.network.to_capacity.to_digraph.is_edge u v := by sorry,
-            simp only[noEdge, if_false, edge, if_true],
-          end,
-          have minimality: rsn.f' v u ≥ d := by sorry,
-          have ge: rsn.afn.f u v ≥ d := by {rw ← eq, exact minimality},
-          linarith,
-        },
-        {
-          simp only [h, if_false, h', if_false],
-          exact rsn.afn.non_neg_flow u v,         
-        },
+      simp only [edge, if_false],
+      linarith,
     },
   end,
   begin -- no_overflow
     intros u v,
-    by_cases h: exists_path.in u v,
-    {
-      have h1: rsn.afn.f u v + d ≤ rsn.afn.network.to_capacity.c u v := by sorry,
-      -- begin
-      --   have h2: rsn.afn.f u v + rsn.f' u v ≤ rsn.afn.network.to_capacity.c u v := by def of rsn
-      --   have h3: d ≤ rsn.f' u v := by minimality of d
-      --   have h4: rsn.afn.f u v + d ≤ rsn.afn.f u v + rsn.f' u v := by {linarith},
-      --   exact le_trans h4 h2
-      -- end,
-      simp only [h, if_true],
-      exact h1,
+    by_cases edge: rsn.afn.network.is_edge u v,
+    {  
+      simp only [edge, if_true],
+      by_cases h: exists_path.in u v,
+      {
+        have h1: rsn.afn.f u v + d ≤ rsn.afn.network.to_capacity.c u v := by sorry,
+        -- begin
+        --   have h2: rsn.afn.f u v + rsn.f' u v ≤ rsn.afn.network.to_capacity.c u v := by def of rsn
+        --   have h3: d ≤ rsn.f' u v := by minimality of d
+        --   have h4: rsn.afn.f u v + d ≤ rsn.afn.f u v + rsn.f' u v := by {linarith},
+        --   exact le_trans h4 h2
+        -- end,
+        simp only [h, if_true],
+        exact h1,
+      },
+      {
+        by_cases h': exists_path.in v u,
+          {
+            have h1: rsn.afn.f u v ≤ rsn.afn.network.to_capacity.c u v := rsn.afn.no_overflow u v,
+            simp only [h, if_false, h', if_true],
+            linarith,
+          },
+          {
+            simp only [h, if_false, h', if_false],
+            exact rsn.afn.no_overflow u v,
+          },
+      },
     },
     {
-      by_cases h': exists_path.in v u,
-        {
-          have h1: rsn.afn.f u v ≤ rsn.afn.network.to_capacity.c u v := rsn.afn.no_overflow u v,
-          simp only [h, if_false, h', if_true],
-          linarith,
-        },
-        {
-          simp only [h, if_false, h', if_false],
-          exact rsn.afn.no_overflow u v,
-        },
+      simp only [edge, if_false],
+      have cap: rsn.afn.network.c u v = 0 := rsn.afn.network.vanishes u v edge,
+      linarith,
     },
   end,
   begin --noEdgesInSource
@@ -872,18 +894,19 @@ begin
   end,
   begin -- conservation
     intros v vNotSinkSource,
-    set newf := (λ (u v : V), ite (path.in u v exists_path) (rsn.afn.f u v + d)
-    (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))),
+    set newf := (λ (u v : V), ite (rsn.afn.network.is_edge u v) (ite (path.in u v exists_path) (rsn.afn.f u v + d)
+    (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))) 0),
     by_cases h: v ∈ vertices,
     {
       -- Issues: How are we proving the cardinality of predecessor and ancestor is 1?
       -- How exactly do we use that within the code to prove h2 and h3?
-      set predecessor := {u | exists_path.in u v},
-      set ancestor := {w | exists_path.in v w},
-      have h1: mk_out rsn.afn.f {v} = mk_in rsn.afn.f {v} := rsn.afn.conservation v vNotSinkSource,
-      have h2: mk_in newf {v} = mk_in rsn.afn.f {v} + d := by sorry, -- use the predecessor
-      have h3: mk_out newf {v} = mk_out rsn.afn.f {v} + d := by sorry, -- use the ancestor
-      rw [h2,h3,h1]
+      -- set predecessor := {u | exists_path.in u v},
+      -- set ancestor := {w | exists_path.in v w},
+      -- have h1: mk_out rsn.afn.f {v} = mk_in rsn.afn.f {v} := rsn.afn.conservation v vNotSinkSource,
+      -- have h2: mk_in newf {v} = mk_in rsn.afn.f {v} + d := by sorry, -- use the predecessor
+      -- have h3: mk_out newf {v} = mk_out rsn.afn.f {v} + d := by sorry, -- use the ancestor
+      -- rw [h2,h3,h1]
+      sorry,
     },
     {
       have h1: ∀ u : V, ¬exists_path.in u v := by sorry,
@@ -901,40 +924,74 @@ begin
       -- end,
       have h3: ∀ u : V, newf u v = rsn.afn.f u v := 
       begin
-        intro u, 
-        have noEdge: ¬exists_path.in u v := by exact h1 u,
-        have noReversedEdge: ¬exists_path.in v u := by exact h2 u,
-        have simplify: newf u v = ite (path.in u v exists_path) (rsn.afn.f u v + d)
-        (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v)) := by simp,
-        rw simplify,
-        simp only [noEdge, if_false, noReversedEdge, if_false],
+        intro u,
+        by_cases edge: rsn.afn.network.is_edge u v,
+        { 
+          have noEdge: ¬exists_path.in u v := by exact h1 u,
+          have noReversedEdge: ¬exists_path.in v u := by exact h2 u,
+          have simplify: newf u v = ite (rsn.afn.network.is_edge u v) (ite (path.in u v exists_path) (rsn.afn.f u v + d)
+          (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))) 0 := by simp,
+          rw simplify,
+          simp only [edge, if_true, noEdge, if_false, noReversedEdge, if_false],
+        },
+        {
+          have simplify: newf u v = ite (rsn.afn.network.is_edge u v) (ite (path.in u v exists_path) (rsn.afn.f u v + d)
+          (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))) 0 := by simp,
+          rw simplify,
+          simp only [edge, if_false],
+          have zeroFlow: rsn.afn.f u v = 0 :=
+          begin
+            have zeroCap: rsn.afn.network.c u v = 0 := rsn.afn.network.vanishes u v edge,
+            have flowLE: rsn.afn.f u v ≤ 0 := by {rw ← zeroCap, exact rsn.afn.no_overflow u v},
+            have flowGE: 0 ≤ rsn.afn.f u v := rsn.afn.non_neg_flow u v,
+            linarith,
+          end,
+          linarith,
+        },
       end,
       have h4: ∀ w : V, newf v w = rsn.afn.f v w :=
       begin
-        intro w, 
-        have noEdge: ¬exists_path.in w v := by exact h1 w,
-        have noReversedEdge: ¬exists_path.in v w := by exact h2 w,
-        have simplify: newf v w = ite (path.in v w exists_path) (rsn.afn.f v w + d)
-        (ite (path.in w v exists_path) (rsn.afn.f v w - d) (rsn.afn.f v w)) := by simp,
+        intro w,
+        by_cases edge: rsn.afn.network.is_edge v w,
+        {   
+          have noEdge: ¬exists_path.in w v := by exact h1 w,
+          have noReversedEdge: ¬exists_path.in v w := by exact h2 w,
+          have simplify: newf v w = ite (rsn.afn.network.is_edge v w) (ite (path.in v w exists_path) (rsn.afn.f v w + d)
+          (ite (path.in w v exists_path) (rsn.afn.f v w - d) (rsn.afn.f v w))) 0 := by simp,
+          rw simplify,
+          simp only [edge, if_true, noReversedEdge, if_false, noEdge, if_false],
+      },
+      {
+        have simplify: newf v w = ite (rsn.afn.network.is_edge v w) (ite (path.in v w exists_path) (rsn.afn.f v w + d)
+        (ite (path.in w v exists_path) (rsn.afn.f v w - d) (rsn.afn.f v w))) 0 := by simp,
         rw simplify,
-        simp only [noReversedEdge, if_false, noEdge, if_false],
+        simp only [edge, if_false],
+        have zeroFlow: rsn.afn.f v w = 0 :=
+          begin
+            have zeroCap: rsn.afn.network.c v w = 0 := rsn.afn.network.vanishes v w edge,
+            have flowLE: rsn.afn.f v w ≤ 0 := by {rw ← zeroCap, exact rsn.afn.no_overflow v w},
+            have flowGE: 0 ≤ rsn.afn.f v w := rsn.afn.non_neg_flow v w,
+            linarith,
+          end,
+          linarith,
+      },
       end,
       have eqIn: mk_in newf {v} = mk_in rsn.afn.f {v} :=
       begin
         unfold mk_in,
-        have eq: ∀ u : V, (u ∈ V' \ {v}) → 
-        (newf u v = rsn.afn.f u v) := by sorry, -- why does it comlain?
-      -- by {intros u hyp, exact h3 u},
-      -- needs one more command
+      --   have eq: ∀ u : V, (u ∈ V' \ {v}) → 
+      --   (newf u v = rsn.afn.f u v) := by sorry, -- why does it complain?
+      -- -- by {intros u hyp, exact h3 u},
+      -- -- needs one more command
       end,
-      have eqOut: mk_out newf {v} = mk_out rsn.afn.f {v} :=
-      begin
-        unfold mk_out,
-        have eq: ∀ w : V, (w ∈ V' \ {v}) → 
-        (newf v w = rsn.afn.f v w) := by sorry,
-      -- by {intros u hyp, exact h3 u},
-      -- needs one more command
-      end,
+      have eqOut: mk_out newf {v} = mk_out rsn.afn.f {v} := by sorry,
+      -- begin
+      --   unfold mk_out,
+      --   have eq: ∀ w : V, (w ∈ V' \ {v}) → 
+      --   (newf v w = rsn.afn.f v w) := by sorry,
+      -- -- by {intros u hyp, exact h3 u},
+      -- -- needs one more command
+      -- end,
       rw [eqIn,eqOut],
       exact rsn.afn.conservation v vNotSinkSource,
     },
@@ -1202,7 +1259,7 @@ begin
       end,
       contradiction
     end,
-    have notEdge: ¬ rsn.is_edge u v := by {exact s_t_not_connected rsn S SCutSet u uInS v vInNS},
+    have notEdge: ¬ rsn.is_edge u v := s_t_not_connected rsn S SCutSet u uInS v vInNS,
     contradiction
   end,
   have cf_vanishes_on_pipes_spec: ∀ u ∈ min_cut.S, ∀ v ∈ V' \ min_cut.S,
@@ -1277,7 +1334,7 @@ theorem max_flow_min_cut {V : Type*} [inst' : fintype V]
   (is_max_flow rsn.afn ∧ is_min_cut c) → (F_value rsn.afn = cut_cap c) :=
 begin
   rintros ⟨max_flow, min_cut⟩ ,
-  have noAugPath: no_augumenting_path rsn := by {exact no_augm_path rsn max_flow},
+  have noAugPath: no_augumenting_path rsn := no_augm_path rsn max_flow,
   have existsCut: ∃cut:cut V, rsn.afn.network = cut.network ∧ 
   cut_cap cut = F_value rsn.afn := existence_of_a_cut rsn noAugPath,
   have max_flow_min_cut: ∀ cut : cut V,
