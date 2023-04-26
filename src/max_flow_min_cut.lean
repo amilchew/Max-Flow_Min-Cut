@@ -900,21 +900,52 @@ begin
   end,
   begin -- conservation
     intros v vNotSinkSource,
+    set s := rsn.afn.network.source,
+    set t := rsn.afn.network.sink,
+    have vNotSource: v ≠ rsn.afn.network.source :=
+    begin
+      by_contradiction h,
+      have union: ({s}: finset V) ∪ ({t}: finset V) = {s,t} := by refl,
+      have vIn: v ∈ ({s}: finset V) ∪ ({t}: finset V) :=
+      begin
+        have vSource: v ∈ {s} := finset.mem_singleton.2 h,
+        have vOR: v ∈ {s} ∨ v ∈ {t} := or.intro_left (v ∈ {t}) vSource,
+        exact finset.mem_union.2 vOR,
+      end,
+      rw union at vIn,
+      have vNotIn: v ∉ ({s}: finset V) ∪ ({t}: finset V) :=
+      by{ rw union, exact (finset.mem_sdiff.1 vNotSinkSource).2},
+      exact absurd vIn vNotIn,
+    end, 
+    have vNotSink: v ≠ rsn.afn.network.sink :=
+    begin
+      by_contradiction h,
+      have union: ({s}: finset V) ∪ ({t}: finset V) = {s,t} := by refl,
+      have vIn: v ∈ ({s}: finset V) ∪ ({t}: finset V) :=
+      begin
+        have vSink: v ∈ {t} := finset.mem_singleton.2 h,
+        have vOR: v ∈ {s} ∨ v ∈ {t} := or.intro_right (v ∈ {s}) vSink,
+        exact finset.mem_union.2 vOR,
+      end,
+      rw union at vIn,
+      have vNotIn: v ∉ ({s}: finset V) ∪ ({t}: finset V) :=
+      by{ rw union, exact (finset.mem_sdiff.1 vNotSinkSource).2},
+      exact absurd vIn vNotIn,
+    end, 
     set newf := (λ (u v : V), ite (rsn.afn.network.is_edge u v) (ite (path.in u v exists_path) (rsn.afn.f u v + d)
     (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))) 0),
     by_cases h: v ∈ vertices,
     {
-      -- Issues: How are we proving the cardinality of predecessor and ancestor is 1?
-      -- How exactly do we use that within the code to prove h2 and h3?
+      -- Issues: How are we looking into cases for the cardinality of predecessor and ancestor?
+      -- How do we procced after for picking these edges? 
       -- set predecessor := {u | exists_path.in u v},
       -- set ancestor := {w | exists_path.in v w},
       -- have h1: mk_out rsn.afn.f {v} = mk_in rsn.afn.f {v} := rsn.afn.conservation v vNotSinkSource,
-      -- have h2: mk_in newf {v} = mk_in rsn.afn.f {v} + d := by sorry, -- use the predecessor
-      -- have h3: mk_out newf {v} = mk_out rsn.afn.f {v} + d := by sorry, -- use the ancestor
       -- rw [h2,h3,h1]
       sorry,
     },
     {
+      -- Problems in next two: How do we use the condition in the definition of the set to show inclusion?
       have h1: ∀ u : V, ¬exists_path.in u v := by sorry,
       -- begin
       --   by_contradiction h',
