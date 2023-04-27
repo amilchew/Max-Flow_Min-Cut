@@ -790,7 +790,7 @@ end
 lemma no_augm_path {V : Type*} [inst' : fintype V]
   (rsn : residual_network V) : (is_max_flow rsn.afn) -> no_augumenting_path rsn :=
 begin
-  intros max_flow v exists_path,
+  intros max_flow x exists_path,
   by_contradiction is_sink,
   set s := rsn.afn.network.source,
   set t := rsn.afn.network.sink,
@@ -937,7 +937,8 @@ begin
     by_cases h: v ∈ vertices,
     {
       -- Issues: How are we looking into cases for the cardinality of predecessor and ancestor?
-      -- How do we procced after for picking these edges? 
+      -- How do we procced after for picking these edges?
+      -- Need to use the fact that x=t to show that there are always two edges for e given vertex outside {s,t} 
       -- set predecessor := {u | exists_path.in u v},
       -- set ancestor := {w | exists_path.in v w},
       -- have h1: mk_out rsn.afn.f {v} = mk_in rsn.afn.f {v} := rsn.afn.conservation v vNotSinkSource,
@@ -949,7 +950,7 @@ begin
       have h1: ∀ u : V, ¬exists_path.in u v := by sorry,
       -- begin
       --   by_contradiction h',
-      --   have ancestor: ∃w: exists_path.in v w := by v ≠ t,
+      --   have ancestor: ∃w: exists_path.in v w := by vNotSink, -- v ≠ t
       --   have contr: v ∈ vertives := by def of vertices and ancestor,
       --   contradiction -- with ¬v ∈ vertices,
       -- end,
@@ -1048,9 +1049,8 @@ begin
     -- take the edge with the added flow
     -- Issue: How do we prove that there is exactly one edge? How do we use it to prove h1?
     have h2: mk_in better_flow.f {source} =
-    mk_in rsn.afn.f {source} := 
+    mk_in rsn.afn.f {source} :=
     begin
-      -- Next two should be trivial, the sets are empty!
       have h3: mk_in better_flow.f {source} = 0 :=
       begin
         unfold mk_in,
