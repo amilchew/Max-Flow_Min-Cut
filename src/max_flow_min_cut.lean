@@ -813,7 +813,13 @@ begin
   },
 end
 
--- **Consider proving a theorem saying that if (u,v) is an edge in the residual network, f' u v > 0!**
+lemma positive_residual_flow {V : Type*} [inst' : fintype V]
+  (rsn : residual_network V) (u v : V) : rsn.is_edge u v → rsn.f' u v > 0 :=
+begin
+  intro edge,
+  rw rsn.is_edge_def at edge,
+  exact edge,
+end
 
 /-!
   Here is our second big lemma, if the active flow is maximum,
@@ -829,10 +835,54 @@ begin
   set t := rsn.afn.network.sink,
   set vertices := set.to_finset ({t} ∪ { x | (∃ y: V, exists_path.in x y) }), --all vertices in the augmenting path
   -- set of all flow values in the augmenting path
-  set flows := set.to_finset (function.uncurry rsn.f' '' {xy ∈ vertices ×ˢ vertices | exists_path.in xy.1 xy.2}),
-  have nonemp: flows.nonempty := by sorry,
+  set flows := set.to_finset (function.uncurry rsn.f' '' {e ∈ vertices ×ˢ vertices | exists_path.in e.1 e.2}),
+  have nonemp: flows.nonempty :=
+  begin
+    by_contradiction h,
+    have empty: flows = ∅ := finset.not_nonempty_iff_eq_empty.1 h,
+    have foo: ∀ v : V, exists_path.in v t → flows ≠ ∅ :=
+    begin
+      intros v hyp,
+      have t_in_vertices: t ∈ vertices := by simp,
+      have v_in_vertices: v ∈ vertices := 
+      begin
+        simp only [set.mem_to_finset, set.mem_set_of_eq],
+        have baz: exists_path.in v t := hyp,
+        have exist: ∃ (y : V), path.in v y exists_path := by {use t, exact hyp}, 
+        have mem: v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := by {simp only [set.mem_set_of_eq], exact exist},
+        have or: v ∈ {t} ∨ v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := or.intro_right (v ∈ {t}) mem,
+        exact (set.mem_union v {t} ({x_1 : V | ∃ (y : V), path.in x_1 y exists_path})).2 or,
+      end,
+      have contr: rsn.f' v t ∈ flows := -- first MWE
+      begin
+        -- simp only [set.mem_to_finset, set.mem_set_of_eq],
+        sorry,
+        -- have mem: (v,t) ∈ {e ∈ vertices ×ˢ vertices | exists_path.in e.1 e.2} := 
+        -- by {simp only [set.mem_to_finset, set.mem_set_of_eq], exact hyp},
+      end,
+      exact finset.ne_empty_of_mem contr, 
+    end,
+    have bar: ∃ v : V, exists_path.in v t := -- exists augmenting path
+    begin
+      -- by_contradiction h,
+      -- push_neg at h,
+      sorry,
+    end,
+    have contr: flows ≠ ∅ := exists.elim bar foo,
+    exact absurd empty contr,
+  end,
   set d := flows.min' nonemp, -- the minimum flow in the augmenting path
-  have pos: 0 < d := by sorry, -- by definition of is_edge in the residual network
+  have pos: 0 < d := -- by definition of is_edge in the residual network
+  begin
+    have mem: d ∈ flows := finset.min'_mem flows nonemp,
+    have pos: ∀ f : ℝ , f ∈ flows → f > 0 := -- second MWE
+    begin
+      intros f hyp,
+      simp only [set.mem_to_finset, set.mem_set_of_eq] at hyp,
+      sorry,
+    end,
+    exact pos d mem,
+  end,
   set better_flow: active_flow_network V :=
   ⟨rsn.afn.network,
   (λ u v : V, if rsn.afn.network.is_edge u v then (if exists_path.in u v then rsn.afn.f u v + d
@@ -857,7 +907,12 @@ begin
           simp only [h, if_false, h', if_true],
           have ine: d ≤ rsn.afn.f u v :=
           begin
-            have minimality: d ≤ rsn.f' v u := by sorry,
+            have minimality: d ≤ rsn.f' v u :=
+            begin
+              have min: ∀ f : ℝ , f ∈ flows → d ≤ f := by {intros f hf, exact finset.min'_le flows f hf},
+              have mem: rsn.f' v u ∈ flows := by sorry,
+              exact min (rsn.f' v u) mem,
+            end,
             have eq: rsn.f' v u = rsn.afn.f u v :=
             begin
               rw rsn.f_def,
@@ -899,7 +954,12 @@ begin
               rw eq,
               linarith,
           end,
-          have h3: d ≤ rsn.f' u v := by sorry, -- minimality of d
+          have h3: d ≤ rsn.f' u v :=
+          begin
+            have min: ∀ f : ℝ , f ∈ flows → d ≤ f := by {intros f hf, exact finset.min'_le flows f hf},
+            have mem: rsn.f' u v ∈ flows := by sorry,
+            exact min (rsn.f' u v) mem,
+          end,
           have h4: rsn.afn.f u v + d ≤ rsn.afn.f u v + rsn.f' u v := by {linarith},
           exact le_trans h4 h2
         end,
@@ -980,19 +1040,37 @@ begin
     },
     {
       -- Problems in next two: How do we use the condition in the definition of the set to show inclusion?
-      have h1: ∀ u : V, ¬exists_path.in u v := by sorry,
-      -- begin
-      --   by_contradiction h',
-      --   have ancestor: ∃w: exists_path.in v w := by vNotSink, -- v ≠ t
-      --   have contr: v ∈ vertives := by def of vertices and ancestor,
-      --   contradiction -- with ¬v ∈ vertices,
-      -- end,
-      have h2: ∀ w : V, ¬exists_path.in v w := by sorry,
-      -- begin
-      --   by_contradiction h',
-      --   have contr: v ∈ vertives := by def of vertices,
-      --   contradiction -- with ¬v ∈ vertices
-      -- end,
+      have h1: ∀ u : V, ¬exists_path.in u v :=
+      begin
+        by_contradiction h',
+        push_neg at h',
+        have ancestor: ∃w : V, exists_path.in v w := by sorry, -- v ≠ t
+        have contr: v ∈ vertices :=
+        begin
+          simp only [set.mem_to_finset, set.mem_set_of_eq],
+          have mem: v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := 
+          by {simp only [set.mem_set_of_eq], exact ancestor},
+          have or: v ∈ {t} ∨ v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := 
+          or.intro_right (v ∈ {t}) mem,
+          exact (set.mem_union v {t} ({x_1 : V | ∃ (y : V), path.in x_1 y exists_path})).2 or,
+        end,
+        exact absurd contr h,
+      end,
+      have h2: ∀ w : V, ¬exists_path.in v w :=
+      begin
+        by_contradiction h',
+        push_neg at h',
+        have contr: v ∈ vertices :=
+        begin
+          simp only [set.mem_to_finset, set.mem_set_of_eq],
+          have mem: v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := 
+          by {simp only [set.mem_set_of_eq], exact h'},
+          have or: v ∈ {t} ∨ v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := 
+          or.intro_right (v ∈ {t}) mem,
+          exact (set.mem_union v {t} ({x_1 : V | ∃ (y : V), path.in x_1 y exists_path})).2 or,
+        end,
+        exact absurd contr h,
+      end,
       have h3: ∀ u : V, newf u v = rsn.afn.f u v := 
       begin
         intro u,
@@ -1160,7 +1238,7 @@ def mk_cut_from_S {V : Type*} [inst' : fintype V]
     simp only [mem_sdiff, mem_univ, set.mem_to_finset, set.mem_set_of_eq, true_and],
     intro p,
     unfold no_augumenting_path at hno_augumenting_path,
-    specialize hno_augumenting_path rsn.afn.network.sink ,
+    specialize hno_augumenting_path rsn.afn.network.sink,
     simp only [eq_self_iff_true, not_true] at hno_augumenting_path,
     apply exists.elim p,
     intros p h,
