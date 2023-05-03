@@ -463,11 +463,13 @@ lemma sum_sum_sdiff_singleton {V : Type*}  [inst' : fintype V]
 begin
   intro sInS,
   have sSubsetS: {s} ⊆  S := (finset.singleton_subset_iff).2 sInS,
-  have foo: ∑ (x : V) in V' \ S, ∑ (y : V) in S, f x y = ∑ (y : V) in S, ∑ (x : V) in V' \ S, f x y := finset.sum_comm,
+  have foo: ∑ (x : V) in V' \ S, ∑ (y : V) in S, f x y = ∑ (y : V) in S, ∑ (x : V) in V' \ S, f x y := 
+  finset.sum_comm,
   have bar: ∑ (y : V) in S, ∑ (x : V) in V' \ S, f x y = 
   ∑ (y : V) in (S \ {s}), ∑ (x : V) in V' \ S, f x y + ∑ (y : V) in {s}, ∑ (x : V) in V' \ S, f x y := 
   by {rw finset.sum_sdiff sSubsetS},
-  have swap: ∑ (y : V) in (S \ {s}), ∑ (x : V) in V' \ S, f x y + ∑ (y : V) in {s}, ∑ (x : V) in V' \ S, f x y = 
+  have swap: 
+  ∑ (y : V) in (S \ {s}), ∑ (x : V) in V' \ S, f x y + ∑ (y : V) in {s}, ∑ (x : V) in V' \ S, f x y = 
   ∑ (x : V) in V' \ S, ∑ (y : V) in (S \ {s}), f x y + ∑ (x : V) in V' \ S, ∑ (y : V) in {s}, f x y := 
   begin 
     have swap1: ∑ (y : V) in (S \ {s}), ∑ (x : V) in V' \ S, f x y = 
@@ -828,7 +830,8 @@ begin
   by_contradiction is_sink,
   set s := rsn.afn.network.source,
   set t := rsn.afn.network.sink,
-  set vertices := set.to_finset ({t} ∪ { x | (∃ y: V, exists_path.in x y) }), --all vertices in the augmenting path
+  --all vertices in the augmenting path
+  set vertices := set.to_finset ({t} ∪ { x | (∃ y: V, exists_path.in x y) }),
   -- set of all flow values in the augmenting path
   set flows := set.to_finset (function.uncurry rsn.f' '' {e ∈ vertices ×ˢ vertices | exists_path.in e.1 e.2}),
   have nonemp: flows.nonempty :=
@@ -855,20 +858,22 @@ begin
         simp only [true_and, set.singleton_union, finset.mem_univ, set.to_finset_congr, 
           true_or, eq_self_iff_true, set.to_finset_set_of, finset.mem_insert, set.to_finset_insert, 
           finset.mem_filter, vertices] at v_in_vertices,
-        apply v_in_vertices.elim; 
-        intro h, ---????????? why cases so slow
+        apply v_in_vertices.elim;
+        intro hypo,
         { 
-          simp only [h, set.mem_to_finset, set.coe_to_finset, set.singleton_union, set.mem_image, set.mem_sep_iff, 
-          set.mem_prod, set.mem_insert_iff, set.mem_set_of_eq, prod.exists, function.uncurry_apply_pair,
-            set.to_finset_nonempty, set.nonempty_image_iff, set.to_finset_eq_empty, set.image_eq_empty, 
-            set.sep_eq_empty_iff_mem_false, and_imp, prod.forall, eq_self_iff_true, true_or] at *,
+          simp only [hypo, set.mem_to_finset, set.coe_to_finset, set.singleton_union, set.mem_image, 
+            set.mem_sep_iff, set.mem_prod, set.mem_insert_iff, set.mem_set_of_eq, prod.exists,
+            function.uncurry_apply_pair, set.to_finset_nonempty, set.nonempty_image_iff,
+            set.to_finset_eq_empty, set.image_eq_empty,set.sep_eq_empty_iff_mem_false, and_imp,
+            prod.forall, eq_self_iff_true, true_or] at *,
           use [t, t],
-          simpa, 
+          simpa,
         },
         { 
-          simp only [set.singleton_union, set.mem_image, set.mem_to_finset, set.coe_to_finset, prod.exists],
+          simp only [set.singleton_union, set.mem_image, set.mem_to_finset, 
+          set.coe_to_finset, prod.exists],
           use [v, t],
-          simp [h, hyp] 
+          simp [hypo, hyp]
         },
       end,
       exact finset.ne_empty_of_mem contr, 
@@ -883,7 +888,7 @@ begin
     exact absurd empty contr,
   end,
   set d := flows.min' nonemp, -- the minimum flow in the augmenting path
-  have pos: 0 < d := -- by definition of is_edge in the residual network
+  have pos: 0 < d :=
   begin
     have mem: d ∈ flows := finset.min'_mem flows nonemp,
     have pos: ∀ f : ℝ , f ∈ flows → f > 0 := -- second MWE
@@ -925,8 +930,16 @@ begin
           begin
             have minimality: d ≤ rsn.f' v u :=
             begin
-              have min: ∀ f : ℝ , f ∈ flows → d ≤ f := by {intros f hf, exact finset.min'_le flows f hf},
-              have mem: rsn.f' v u ∈ flows := by sorry,
+              have min: ∀ f : ℝ , f ∈ flows → d ≤ f := 
+              by {intros f hf, exact finset.min'_le flows f hf},
+              have mem: rsn.f' v u ∈ flows :=
+              begin
+                have foo: ∃ y : V, exists_path.in v y := by {use u, exact h'},
+                simp only [set.mem_image, set.mem_to_finset, set.coe_to_finset, prod.exists],
+                  use [v, u],
+                  simp [foo, h'],
+                  sorry,
+              end,
               exact min (rsn.f' v u) mem,
             end,
             have eq: rsn.f' v u = rsn.afn.f u v :=
@@ -972,8 +985,16 @@ begin
           end,
           have h3: d ≤ rsn.f' u v :=
           begin
-            have min: ∀ f : ℝ , f ∈ flows → d ≤ f := by {intros f hf, exact finset.min'_le flows f hf},
-            have mem: rsn.f' u v ∈ flows := by sorry,
+            have min: ∀ f : ℝ , f ∈ flows → d ≤ f := 
+            by {intros f hf, exact finset.min'_le flows f hf},
+            have mem: rsn.f' u v ∈ flows :=
+            begin
+              have foo: ∃ y : V, exists_path.in u y := by {use v, exact h},
+              simp only [set.mem_image, set.mem_to_finset, set.coe_to_finset, prod.exists],
+              use [u, v],
+              simp [foo, h],
+              sorry,
+            end,
             exact min (rsn.f' u v) mem,
           end,
           have h4: rsn.afn.f u v + d ≤ rsn.afn.f u v + rsn.f' u v := by {linarith},
@@ -985,7 +1006,8 @@ begin
       {
         by_cases h': exists_path.in v u,
           {
-            have h1: rsn.afn.f u v ≤ rsn.afn.network.to_capacity.c u v := rsn.afn.no_overflow u v,
+            have h1: rsn.afn.f u v ≤ rsn.afn.network.to_capacity.c u v := 
+            rsn.afn.no_overflow u v,
             simp only [h, if_false, h', if_true],
             linarith,
           },
@@ -1041,7 +1063,8 @@ begin
       by{ rw union, exact (finset.mem_sdiff.1 vNotSinkSource).2},
       exact absurd vIn vNotIn,
     end, 
-    set newf := (λ (u v : V), ite (rsn.afn.network.is_edge u v) (ite (path.in u v exists_path) (rsn.afn.f u v + d)
+    set newf := (λ (u v : V), ite (rsn.afn.network.is_edge u v) 
+    (ite (path.in u v exists_path) (rsn.afn.f u v + d)
     (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))) 0),
     by_cases h: v ∈ vertices,
     {
@@ -1094,13 +1117,15 @@ begin
         { 
           have noEdge: ¬exists_path.in u v := by exact h1 u,
           have noReversedEdge: ¬exists_path.in v u := by exact h2 u,
-          have simplify: newf u v = ite (rsn.afn.network.is_edge u v) (ite (path.in u v exists_path) (rsn.afn.f u v + d)
+          have simplify: newf u v = ite (rsn.afn.network.is_edge u v) 
+          (ite (path.in u v exists_path) (rsn.afn.f u v + d)
           (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))) 0 := by simp,
           rw simplify,
           simp only [edge, if_true, noEdge, if_false, noReversedEdge, if_false],
         },
         {
-          have simplify: newf u v = ite (rsn.afn.network.is_edge u v) (ite (path.in u v exists_path) (rsn.afn.f u v + d)
+          have simplify: newf u v = ite (rsn.afn.network.is_edge u v) 
+          (ite (path.in u v exists_path) (rsn.afn.f u v + d)
           (ite (path.in v u exists_path) (rsn.afn.f u v - d) (rsn.afn.f u v))) 0 := by simp,
           rw simplify,
           simp only [edge, if_false],
@@ -1115,13 +1140,15 @@ begin
         {   
           have noEdge: ¬exists_path.in w v := by exact h1 w,
           have noReversedEdge: ¬exists_path.in v w := by exact h2 w,
-          have simplify: newf v w = ite (rsn.afn.network.is_edge v w) (ite (path.in v w exists_path) (rsn.afn.f v w + d)
+          have simplify: newf v w = ite (rsn.afn.network.is_edge v w) 
+          (ite (path.in v w exists_path) (rsn.afn.f v w + d)
           (ite (path.in w v exists_path) (rsn.afn.f v w - d) (rsn.afn.f v w))) 0 := by simp,
           rw simplify,
           simp only [edge, if_true, noReversedEdge, if_false, noEdge, if_false],
       },
       {
-        have simplify: newf v w = ite (rsn.afn.network.is_edge v w) (ite (path.in v w exists_path) (rsn.afn.f v w + d)
+        have simplify: newf v w = ite (rsn.afn.network.is_edge v w) 
+        (ite (path.in v w exists_path) (rsn.afn.f v w + d)
         (ite (path.in w v exists_path) (rsn.afn.f v w - d) (rsn.afn.f v w))) 0 := by simp,
         rw simplify,
         simp only [edge, if_false],
@@ -1493,7 +1520,8 @@ begin
     have flow_eq_cap_on_cut : mk_out rsn.afn.f min_cut.S = mk_out rsn.afn.network.c min_cut.S :=
     begin
       unfold mk_out,
-      rw eq_on_res_then_on_sum (min_cut.S) (V' \ min_cut.S) (rsn.afn.f) (rsn.afn.network.to_capacity.c) (eq_on_pipes),
+      rw eq_on_res_then_on_sum 
+      (min_cut.S) (V' \ min_cut.S) (rsn.afn.f) (rsn.afn.network.to_capacity.c) (eq_on_pipes),
     end,
     rw flow_eq_cap_on_cut,
     refl,
