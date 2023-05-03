@@ -759,13 +759,8 @@ def mk_rsn {V : Type*} [fintype V] -- stays for residual network
 universe u
 
 /-
-  We define a path structure indicating if there is a path between two vertices,
-  given the edges in the graph.
--/
-
-/- 
-  Takes a vertex $a and return true if and only if for a given vertex $v,
-  there exists a path from $a to $v.
+  We define a recursive structure returning the path between two vertices,
+  if such a path exists, given the edges in the graph.
 -/
 inductive path {V : Type u } (is_edge : V -> V -> Prop) (a : V) : V → Type (u + 1)
 | nil  : path a
@@ -849,16 +844,32 @@ begin
         simp only [set.mem_to_finset, set.mem_set_of_eq],
         have baz: exists_path.in v t := hyp,
         have exist: ∃ (y : V), path.in v y exists_path := by {use t, exact hyp}, 
-        have mem: v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := by {simp only [set.mem_set_of_eq], exact exist},
-        have or: v ∈ {t} ∨ v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := or.intro_right (v ∈ {t}) mem,
+        have mem: v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := 
+        by {simp only [set.mem_set_of_eq], exact exist},
+        have or: v ∈ {t} ∨ v ∈ {x_1 : V | ∃ (y : V), path.in x_1 y exists_path} := 
+        or.intro_right (v ∈ {t}) mem,
         exact (set.mem_union v {t} ({x_1 : V | ∃ (y : V), path.in x_1 y exists_path})).2 or,
       end,
       have contr: rsn.f' v t ∈ flows := -- first MWE
       begin
-        -- simp only [set.mem_to_finset, set.mem_set_of_eq],
-        sorry,
-        -- have mem: (v,t) ∈ {e ∈ vertices ×ˢ vertices | exists_path.in e.1 e.2} := 
-        -- by {simp only [set.mem_to_finset, set.mem_set_of_eq], exact hyp},
+        simp only [true_and, set.singleton_union, finset.mem_univ, set.to_finset_congr, 
+          true_or, eq_self_iff_true, set.to_finset_set_of, finset.mem_insert, set.to_finset_insert, 
+          finset.mem_filter, vertices] at v_in_vertices,
+        apply v_in_vertices.elim; 
+        intro h, ---????????? why cases so slow
+        { 
+          simp only [h, set.mem_to_finset, set.coe_to_finset, set.singleton_union, set.mem_image, set.mem_sep_iff, 
+          set.mem_prod, set.mem_insert_iff, set.mem_set_of_eq, prod.exists, function.uncurry_apply_pair,
+            set.to_finset_nonempty, set.nonempty_image_iff, set.to_finset_eq_empty, set.image_eq_empty, 
+            set.sep_eq_empty_iff_mem_false, and_imp, prod.forall, eq_self_iff_true, true_or] at *,
+          use [t, t],
+          simpa, 
+        },
+        { 
+          simp only [set.singleton_union, set.mem_image, set.mem_to_finset, set.coe_to_finset, prod.exists],
+          use [v, t],
+          simp [h, hyp] 
+        },
       end,
       exact finset.ne_empty_of_mem contr, 
     end,
@@ -878,7 +889,12 @@ begin
     have pos: ∀ f : ℝ , f ∈ flows → f > 0 := -- second MWE
     begin
       intros f hyp,
-      simp only [set.mem_to_finset, set.mem_set_of_eq] at hyp,
+      simp only [set.mem_to_finset, set.mem_set_of_eq, set.coe_to_finset, set.singleton_union, 
+      set.mem_image, set.mem_sep_iff, set.mem_prod, set.mem_insert_iff, prod.exists, 
+      function.uncurry_apply_pair] at hyp,
+      obtain ⟨a, b, hyp, hyp'⟩ := hyp,
+      rw [← hyp'],
+      apply positive_residual_flow,
       sorry,
     end,
     exact pos d mem,
