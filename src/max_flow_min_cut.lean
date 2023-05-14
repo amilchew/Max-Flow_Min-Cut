@@ -15,18 +15,18 @@ then its value is equal to the capacity of a minimum cut in the same network.
 - `weak_duality`        :
   The value of every flow is less than or equal to the capacity of every cut.
 
-  direct consequences   :
+  direct consequences    :
   - The value of a max flow is always less than or equal to the capacity of a min cut.
-  - `max_flow_criterion`:
+  - `max_flow_criterion` :
     If a flow value is equal to a cut capacity in the same flow network, then the flow is maximum.
-  - `min_cut_criterion` :
+  - `min_cut_criterion`  :
     If a capacity of a cut is equal to a flow value in the same network, then the cut is minimum.
 
-- `no_augm_path`        :
+- `no_augm_path`         :
   If the active flow gives a maximum flow, then there is no augmenting path in the residual network.
-- `existence_of_a_cut`  :
+- `existence_of_a_cut`   :
   there exists a cut with a capacity equal to the value of the maximum flow.
-- `max_flow_min_cut`    :
+- `max_flow_min_cut`     :
   If f is a max flow and c is a min cut in the same network, then their values are equal.
 
 The `max_flow_min_cut` lemma is the statement of the max-flow min-cut theorem.
